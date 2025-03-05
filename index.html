@@ -14,7 +14,7 @@
             height: 100vh;
             background-color: #f0f0f0;
             font-family: Arial, sans-serif;
-            touch-action: none; /* Disable browser touch interactions */
+            touch-action: none;
         }
 
         #game-container {
@@ -98,6 +98,7 @@
             border: none;
             display: none;
             z-index: 20;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -130,7 +131,7 @@
         const GAME_URL = 'https://avd-s.github.io/Coin-Dodge-Game/';
 
         // Game state
-        const game = {
+        let game = {
             score: 0,
             lives: 3,
             isGameOver: false
@@ -164,7 +165,6 @@
             qrCodeDisplay.src = qr.createDataURL(4);
             qrLinkDisplay.textContent = GAME_URL;
         }
-        generateQRCode();
 
         // Update game stats
         function updateStats() {
@@ -307,18 +307,27 @@
 
         // Restart game
         function restartGame() {
+            // Clear all existing elements
+            document.querySelectorAll('.coin, .bullet').forEach(el => {
+                el.remove();
+            });
+
             // Reset game state
-            game.score = 0;
-            game.lives = 3;
-            game.isGameOver = false;
+            game = {
+                score: 0,
+                lives: 3,
+                isGameOver: false
+            };
 
             // Reset UI
             updateStats();
             restartBtn.style.display = 'none';
 
-            // Reset player position
-            player.style.left = '0px';
-            player.style.top = '0px';
+            // Reset player position to center
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            player.style.left = `${(containerWidth - playerConfig.width) / 2}px`;
+            player.style.top = `${containerHeight - playerConfig.height}px`;
         }
 
         // Game loop
@@ -338,10 +347,18 @@
         container.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
         container.addEventListener('touchend', (e) => e.preventDefault(), { passive: false });
 
+        // Initial setup
+        generateQRCode();
+        updateStats();
+
+        // Position player initially
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight;
+        player.style.left = `${(containerWidth - playerConfig.width) / 2}px`;
+        player.style.top = `${containerHeight - playerConfig.height}px`;
+
         // Start game loop
         setInterval(gameLoop, 50);
-        updateStats();
-        generateQRCode();
     </script>
 </body>
 </html>
