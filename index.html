@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coin Dodge Game</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            touch-action: none; /* Disable browser touch interactions */
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            height: 400px;
+            background-color: #333;
+            border: 2px solid #000;
+            overflow: hidden;
+        }
+
+        #player {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-color: blue;
+            border-radius: 50%;
+            z-index: 10;
+        }
+
+        .coin {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: gold;
+            border-radius: 50%;
+            z-index: 5;
+        }
+
+        .bullet {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: red;
+            border-radius: 50%;
+            z-index: 5;
+        }
+
+        #game-stats {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 16px;
+            z-index: 15;
+        }
+
+        #qr-container {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 15;
+        }
+
+        #qr-code {
+            width: 100px;
+            height: 100px;
+        }
+
+        #qr-link {
+            color: white;
+            font-size: 10px;
+            margin-top: 5px;
+            text-align: center;
+            word-break: break-all;
+            max-width: 100px;
+        }
+
+        #restart-btn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 10px 20px;
+            background-color: green;
+            color: white;
+            border: none;
+            display: none;
+            z-index: 20;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="game-stats">
+            Score: <span id="score">0</span> | 
+            Lives: <span id="lives">3</span>
+        </div>
+        <div id="qr-container">
+            <img id="qr-code" src="" alt="Game QR Code">
+            <div id="qr-link"></div>
+        </div>
+        <div id="player"></div>
+        <button id="restart-btn">Restart Game</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <script>
+        // Get DOM elements
+        const container = document.getElementById('game-container');
+        const player = document.getElementById('player');
+        const scoreDisplay = document.getElementById('score');
+        const livesDisplay = document.getElementById('lives');
+        const qrCodeDisplay = document.getElementById('qr-code');
+        const qrLinkDisplay = document.getElementById('qr-link');
+        const restartBtn = document.getElementById('restart-btn');
+
+        // Update this URL to match your GitHub Pages URL
+        const GAME_URL = 'https://YOUR-USERNAME.github.io/coin-dodge-game/';
+
+        // Game state
+        const game = {
+            score: 0,
+            lives: 3,
+            isGameOver: false
+        };
+
+        // Player setup
+        const playerConfig = {
+            speed: 5,
+            width: 30,
+            height: 30
+        };
+
+        // Coin and bullet configurations
+        const coinConfig = {
+            width: 20,
+            height: 20,
+            speed: 3
+        };
+
+        const bulletConfig = {
+            width: 10,
+            height: 10,
+            speed: 4
+        };
+
+        // Generate QR Code
+        function generateQRCode() {
+            const qr = qrcode(0, 'M');
+            qr.addData(GAME_URL);
+            qr.make();
+            qrCodeDisplay.src = qr.createDataURL(4);
+            qrLinkDisplay.textContent = GAME_URL;
+        }
+        generateQRCode();
+
+        // Update game stats
+        function updateStats() {
+            scoreDisplay.textContent = game.score;
+            livesDisplay.textContent = game.lives;
+        }
+
+        // Player movement for mouse
+        function movePlayerMouse(e) {
+            if (game.isGameOver) return;
+            const containerRect = container.getBoundingClientRect();
+            const x = e.clientX - containerRect.left - playerConfig.width / 2;
+            const y = e.clientY - containerRect.top - playerConfig.height / 2;
+
+            // Constrain movement within container
+            player.style.left = `${Math.max(0, Math.min(x, containerRect.width - playerConfig.width))}px`;
+            player.style.top = `${Math.max(0, Math.min(y, containerRect.height - playerConfig.height))}px`;
+        }
+
+        // Player movement for touch
+        function movePlayerTouch(e) {
+            if (game.isGameOver) return;
+            e.preventDefault();
+            const containerRect = container.getBoundingClientRect();
+            const touch = e.touches[0];
+            const x = touch.clientX - containerRect.left - playerConfig.width / 2;
+            const y = touch.clientY - containerRect.top - playerConfig.height / 2;
+
+            // Constrain movement within container
+            player.style.left = `${Math.max(0, Math.min(x, containerRect.width - playerConfig.width))}px`;
+            player.style.top = `${Math.max(0, Math.min(y, containerRect.height - playerConfig.height))}px`;
+        }
+
+        // Spawn coins
+        function spawnCoin() {
+            if (game.isGameOver) return;
+
+            const coin = document.createElement('div');
+            coin.classList.add('coin');
+            container.appendChild(coin);
+
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+
+            // Random starting position
+            coin.style.left = `${Math.random() * (containerWidth - coinConfig.width)}px`;
+            coin.style.top = '0px';
+
+            // Animate coin descent
+            function animateCoin() {
+                if (game.isGameOver) return;
+
+                const currentTop = parseFloat(coin.style.top);
+                
+                if (currentTop > containerHeight) {
+                    container.removeChild(coin);
+                    return;
+                }
+
+                coin.style.top = `${currentTop + coinConfig.speed}px`;
+                requestAnimationFrame(animateCoin);
+
+                // Check collision with player
+                if (checkCollision(player, coin)) {
+                    container.removeChild(coin);
+                    game.score += 10;
+                    updateStats();
+                }
+            }
+            animateCoin();
+        }
+
+        // Spawn bullets
+        function spawnBullet() {
+            if (game.isGameOver) return;
+
+            const bullet = document.createElement('div');
+            bullet.classList.add('bullet');
+            container.appendChild(bullet);
+
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+
+            // Random starting position
+            bullet.style.left = `${Math.random() * (containerWidth - bulletConfig.width)}px`;
+            bullet.style.top = '0px';
+
+            // Animate bullet descent
+            function animateBullet() {
+                if (game.isGameOver) return;
+
+                const currentTop = parseFloat(bullet.style.top);
+                
+                if (currentTop > containerHeight) {
+                    container.removeChild(bullet);
+                    return;
+                }
+
+                bullet.style.top = `${currentTop + bulletConfig.speed}px`;
+                requestAnimationFrame(animateBullet);
+
+                // Check collision with player
+                if (checkCollision(player, bullet)) {
+                    container.removeChild(bullet);
+                    game.lives--;
+                    game.score = Math.max(0, game.score - 5);
+                    updateStats();
+
+                    if (game.lives <= 0) {
+                        endGame();
+                    }
+                }
+            }
+            animateBullet();
+        }
+
+        // Collision detection
+        function checkCollision(a, b) {
+            const aRect = a.getBoundingClientRect();
+            const bRect = b.getBoundingClientRect();
+
+            return !(
+                aRect.top > bRect.bottom ||
+                aRect.right < bRect.left ||
+                aRect.bottom < bRect.top ||
+                aRect.left > bRect.right
+            );
+        }
+
+        // End game
+        function endGame() {
+            game.isGameOver = true;
+            restartBtn.style.display = 'block';
+            
+            // Remove all existing coins and bullets
+            document.querySelectorAll('.coin, .bullet').forEach(el => {
+                el.remove();
+            });
+        }
+
+        // Restart game
+        function restartGame() {
+            // Reset game state
+            game.score = 0;
+            game.lives = 3;
+            game.isGameOver = false;
+
+            // Reset UI
+            updateStats();
+            restartBtn.style.display = 'none';
+
+            // Reset player position
+            player.style.left = '0px';
+            player.style.top = '0px';
+        }
+
+        // Game loop
+        function gameLoop() {
+            if (!game.isGameOver) {
+                if (Math.random() < 0.02) spawnCoin();
+                if (Math.random() < 0.01) spawnBullet();
+            }
+        }
+
+        // Event listeners
+        container.addEventListener('mousemove', movePlayerMouse);
+        container.addEventListener('touchmove', movePlayerTouch, { passive: false });
+        restartBtn.addEventListener('click', restartGame);
+
+        // Prevent default touch behaviors
+        container.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+        container.addEventListener('touchend', (e) => e.preventDefault(), { passive: false });
+
+        // Start game loop
+        setInterval(gameLoop, 50);
+        updateStats();
+        generateQRCode();
+    </script>
+</body>
+</html>
